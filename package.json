@@ -1,0 +1,7 @@
+{
+  "name": "walk-in-visit-log",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Walk-in client visit log with daily reports. Static page + one serverless API + Upstash Redis.",
+  "engines": { "node": ">=18" }
+}

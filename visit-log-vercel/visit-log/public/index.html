@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Walk-in Visit Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sticky header with four tabs; one working surface below; report view reads like a printed summary sheet. */
+:root{
+  --bg:#f4f3ef; --surface:#ffffff; --surface2:#eceae4; --ink:#1d2423; --muted:#5f6a68; --line:#dcdad2;
+  --accent:#0f5c57; --accent-ink:#ffffff; --accent-soft:#d9ece9;
+  --good:#1f7a45; --good-soft:#dcf0e3; --warn:#9a5b00; --warn-soft:#fbebcf; --info:#2f5f9e; --info-soft:#dde8f7; --neutral-soft:#e8e6df;
+  --bad:#b3261e;
+  --font:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121817; --surface:#1a2221; --surface2:#222c2b; --ink:#e8eeec; --muted:#9aa8a5; --line:#2e3a38;
+  --accent:#5fc4ba; --accent-ink:#0b1514; --accent-soft:#17302d;
+  --good:#6fd195; --good-soft:#173324; --warn:#e8b25a; --warn-soft:#3a2d12; --info:#8db6ee; --info-soft:#18283d; --neutral-soft:#252f2e; --bad:#ff8a80; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121817; --surface:#1a2221; --surface2:#222c2b; --ink:#e8eeec; --muted:#9aa8a5; --line:#2e3a38;
+  --accent:#5fc4ba; --accent-ink:#0b1514; --accent-soft:#17302d;
+  --good:#6fd195; --good-soft:#173324; --warn:#e8b25a; --warn-soft:#3a2d12; --info:#8db6ee; --info-soft:#18283d; --neutral-soft:#252f2e; --bad:#ff8a80; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.45;padding-inline:max(16px,env(safe-area-inset-left,0px)) max(16px,env(safe-area-inset-right,0px))}
+button,input,select,textarea{font:inherit;color:inherit}
+.wrap{max-width:1100px;margin:0 auto;padding-block:16px 48px}
+header.top{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;justify-content:space-between;padding-bottom:12px}
+h1{font-size:20px;font-weight:600;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:12px}
+nav.tabs{display:flex;gap:4px;background:var(--surface2);padding:4px;border-radius:10px;flex-wrap:wrap}
+nav.tabs button{border:0;background:transparent;padding:7px 14px;border-radius:7px;cursor:pointer;color:var(--muted);font-weight:500}
+nav.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--bad)}
+.btn.small{padding:4px 10px;font-size:12px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.grow{flex:1 1 auto}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.panel h2{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 12px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-block:14px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi .n{font-size:28px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi .l{font-size:12px;color:var(--muted);margin-top:2px}
+.kpi.sale .n{color:var(--good)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:9px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface)}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.num,th.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+td.rem{min-width:220px;max-width:380px}
+.mono{font-family:var(--mono);font-size:12px}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:500;white-space:nowrap}
+.p-Sale{background:var(--good-soft);color:var(--good)}
+.p-Follow-up{background:var(--warn-soft);color:var(--warn)}
+.p-Sample{background:var(--info-soft);color:var(--info)}
+.p-Visit-only{background:var(--neutral-soft);color:var(--muted)}
+.muted{color:var(--muted)}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:500;color:var(--muted);min-width:0}
+input,select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;color:var(--ink)}
+textarea{resize:vertical;min-height:64px}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.form .full{grid-column:1/-1}
+.bar{display:grid;grid-template-columns:minmax(80px,140px) 1fr 34px;gap:8px;align-items:center;margin-block:5px;font-size:13px}
+.bar .t{height:14px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.bar .t i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.bar span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar b{text-align:right;font-variant-numeric:tabular-nums;font-weight:500}
+.weeks{display:flex;align-items:flex-end;gap:4px;height:150px;padding-top:8px}
+.weeks div{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:4px}
+.weeks i{display:block;width:100%;background:var(--accent);border-radius:3px 3px 0 0;min-height:2px}
+.weeks em{font-style:normal;font-size:10px;color:var(--muted);white-space:nowrap}
+.weeks b{font-size:11px;font-weight:500;font-variant-numeric:tabular-nums}
+pre.share{white-space:pre-wrap;word-break:break-word;font-family:var(--mono);font-size:12.5px;background:var(--surface2);border-radius:8px;padding:12px;margin:0;max-height:340px;overflow:auto}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-weight:500;z-index:20}
+.note{font-size:12px;color:var(--muted)}
+.fu{display:flex;flex-direction:column;gap:8px;margin:0;padding:0;list-style:none}
+.fu li{display:flex;gap:10px;align-items:flex-start;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.fu li:last-child{border:0;padding-bottom:0}
+@media (max-width:560px){.bar{grid-template-columns:90px 1fr 30px}}
+.login{max-width:340px;margin:60px auto}
+.login form{display:flex;flex-direction:column;gap:10px}
+.err{color:var(--bad);font-size:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Walk-in Visit Log</h1>
+      <div class="sub"><span id="sync">Connecting…</span> · <a href="#" data-logout-link style="color:inherit">Sign out</a></div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Views">
+      <button role="tab" data-tab="report" aria-selected="true">Report</button>
+      <button role="tab" data-tab="add" aria-selected="false">Add visit</button>
+      <button role="tab" data-tab="insights" aria-selected="false">Insights</button>
+      <button role="tab" data-tab="all" aria-selected="false">All visits</button>
+    </nav>
+  </header>
+  <main id="main"></main>
+</div>
+<div id="toast" class="toast" hidden></div>
+<datalist id="dl-loc"></datalist><datalist id="dl-ref"></datalist><datalist id="dl-sp"></datalist>
+
+<script>
+(function(){
+'use strict';
+var STATUSES=['Visit only','Follow-up','Sample','Sale'];
+var ARCH=['','Yes','No','Designer','Carpenter'];
+var state={tab:'report',period:'day',date:today(),visits:[],ready:false,db:null,editing:null,filter:{q:'',sp:'',status:'',month:''},insRange:'all',confirmDel:null,form:null};
+
+function pad(n){return String(n).padStart(2,'0')}
+function ymd(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function today(){return ymd(new Date())}
+function parse(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2])}
+function addDays(s,n){var d=parse(s);d.setDate(d.getDate()+n);return ymd(d)}
+function fmt(s,long){return parse(s).toLocaleDateString('en-GB',long?{weekday:'long',day:'numeric',month:'long',year:'numeric'}:{day:'numeric',month:'short'})}
+function fmtShort(s){return parse(s).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function weekStart(s){var d=parse(s);var k=(d.getDay()+6)%7;d.setDate(d.getDate()-k);return ymd(d)}
+function pill(s){return '<span class="pill p-'+esc((s||'Visit only').replace(' ','-'))+'">'+esc(s||'Visit only')+'</span>'}
+function toast(m){var t=document.getElementById('toast');t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){t.hidden=true},2200)}
+
+function range(){
+  var d=state.date;
+  if(state.period==='day')return[d,d];
+  if(state.period==='week'){var s=weekStart(d);return[s,addDays(s,6)]}
+  var dd=parse(d);return[ymd(new Date(dd.getFullYear(),dd.getMonth(),1)),ymd(new Date(dd.getFullYear(),dd.getMonth()+1,0))];
+}
+function inRange(a,b){return state.visits.filter(function(v){return v.date>=a&&v.date<=b}).sort(function(x,y){return x.date<y.date?-1:x.date>y.date?1:(x.created||0)-(y.created||0)})}
+function count(list,fn){var m={};list.forEach(function(v){var k=fn(v)||'Not noted';m[k]=(m[k]||0)+1});return Object.keys(m).map(function(k){return[k,m[k]]}).sort(function(a,b){return b[1]-a[1]})}
+function stats(list){
+  return{total:list.length,sale:list.filter(function(v){return v.status==='Sale'}).length,fu:list.filter(function(v){return v.status==='Follow-up'}).length,sample:list.filter(function(v){return v.status==='Sample'}).length,arch:list.filter(function(v){return v.architect&&v.architect!=='No'}).length}
+}
+function periodLabel(a,b){
+  if(state.period==='day')return fmt(a,true);
+  if(state.period==='week')return fmt(a)+' – '+fmt(b)+' '+parse(b).getFullYear();
+  return parse(a).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+}
+function reportText(list,a,b){
+  var s=stats(list),L=[];
+  L.push('*Walk-in Visit Report – '+periodLabel(a,b)+'*','');
+  L.push('Total visits: '+s.total+'  |  Sales / payments: '+s.sale+'  |  Follow-ups: '+s.fu+'  |  Samples: '+s.sample);
+  L.push('Visits with architect/designer: '+s.arch);
+  var sp=count(list,function(v){return v.salesperson});
+  if(sp.length)L.push('By salesperson: '+sp.map(function(x){return x[0]+' '+x[1]}).join(', '));
+  L.push('');
+  if(!list.length)L.push('No visits recorded.');
+  list.forEach(function(v,i){
+    var line=(i+1)+'. '+v.client+(v.location?' ('+v.location+')':'')+' – '+v.status;
+    if(v.salesperson)line+=' – '+v.salesperson;
+    if(v.reference)line+=' – ref: '+v.reference;
+    L.push(line);
+    var d=[v.interest,v.remarks].filter(Boolean).join(' | ');
+    if(d)L.push('   '+d);
+  });
+  var f=list.filter(function(v){return v.status==='Follow-up'||v.status==='Sample'});
+  if(f.length){L.push('','*Follow-ups needed*');f.forEach(function(v){L.push('• '+v.client+' – '+(v.remarks||v.interest||v.status)+(v.salesperson?' ('+v.salesperson+')':''))})}
+  return L.join('\n');
+}
+
+/* ---------- views ---------- */
+function vReport(){
+  if(!state.visits.length)return '<div class="panel empty"><b>No visits saved yet.</b><br>Load the 176 visits from your Excel sheet, or add your first visit.<div class="row" style="justify-content:center;margin-top:12px"><button class="btn primary" data-seed>Load existing visits</button><button class="btn" data-tab-go="add">Add a visit</button></div></div>';
+  var r=range(),list=inRange(r[0],r[1]),s=stats(list);
+  var h='<div class="row" style="margin-top:6px">';
+  h+='<div class="row" role="group" aria-label="Period">'+['day','week','month'].map(function(p){return '<button class="btn small'+(state.period===p?' primary':'')+'" data-period="'+p+'">'+{day:'Day',week:'Week',month:'Month'}[p]+'</button>'}).join('')+'</div>';
+  h+='<button class="btn small" data-step="-1" aria-label="Previous">‹</button><input type="date" id="repdate" value="'+state.date+'" style="width:auto"><button class="btn small" data-step="1" aria-label="Next">›</button>';
+  h+='<button class="btn small" data-go-today>Today</button><span class="grow"></span><button class="btn primary" data-copy>Copy report text</button></div>';
+  h+='<h2 style="font-size:18px;margin:16px 0 0;font-weight:600">'+esc(periodLabel(r[0],r[1]))+'</h2>';
+  h+='<div class="kpis"><div class="kpi"><div class="n">'+s.total+'</div><div class="l">Visits</div></div><div class="kpi sale"><div class="n">'+s.sale+'</div><div class="l">Sales / payments</div></div><div class="kpi"><div class="n">'+s.fu+'</div><div class="l">Follow-ups</div></div><div class="kpi"><div class="n">'+s.sample+'</div><div class="l">Samples</div></div><div class="kpi"><div class="n">'+s.arch+'</div><div class="l">With architect / designer</div></div></div>';
+  if(!list.length){
+    h+='<div class="panel empty">No visits recorded for this '+state.period+'.<br><button class="btn primary" style="margin-top:10px" data-tab-go="add">Add a visit</button></div>';
+  } else {
+    h+=visitTable(list,{showDate:state.period!=='day',actions:true});
+    var f=list.filter(function(v){return v.status==='Follow-up'||v.status==='Sample'});
+    h+='<div class="grid2" style="margin-top:14px">';
+    h+='<div class="panel"><h2>Follow-ups needed</h2>'+(f.length?'<ul class="fu">'+f.map(function(v){return '<li>'+pill(v.status)+'<div><b>'+esc(v.client)+'</b>'+(v.salesperson?' <span class="muted">· '+esc(v.salesperson)+'</span>':'')+'<div class="muted">'+esc(v.remarks||v.interest||'')+'</div></div></li>'}).join('')+'</ul>':'<div class="muted">Nothing pending.</div>')+'</div>';
+    h+='<div class="panel"><h2>Message to management</h2><pre class="share" id="sharetxt">'+esc(reportText(list,r[0],r[1]))+'</pre><div class="note" style="margin-top:8px">Formatted for WhatsApp or email. Copy it, then paste.</div></div>';
+    h+='</div>';
+  }
+  return h;
+}
+function visitTable(list,o){
+  o=o||{};
+  var h='<div class="tablewrap"><table><thead><tr>'+(o.showDate?'<th>Date</th>':'<th class="num">#</th>')+'<th>Client</th><th>Location</th><th>Reference</th><th>Architect</th><th>Sales person</th><th>Status</th><th>Products / remarks</th>'+(o.actions?'<th></th>':'')+'</tr></thead><tbody>';
+  list.forEach(function(v,i){
+    h+='<tr><td class="num">'+(o.showDate?esc(fmtShort(v.date)):(i+1))+'</td><td><b>'+esc(v.client)+'</b>'+(v.phone?'<div class="mono muted">'+esc(v.phone)+'</div>':'')+'</td><td>'+esc(v.location)+'</td><td>'+esc(v.reference)+'</td><td>'+esc(v.architect)+(v.dealer?'<div class="muted">'+esc(v.dealer)+'</div>':'')+'</td><td>'+esc(v.salesperson)+'</td><td>'+pill(v.status)+'</td><td class="rem">'+(v.interest?'<div class="mono">'+esc(v.interest)+'</div>':'')+esc(v.remarks)+'</td>';
+    if(o.actions)h+='<td style="white-space:nowrap">'+(state.confirmDel===v.id?'<button class="btn small danger" data-del="'+v.id+'">Delete?</button> <button class="btn small" data-cancel-del>No</button>':'<button class="btn small" data-edit="'+v.id+'">Edit</button> <button class="btn small danger" data-askdel="'+v.id+'" aria-label="Delete">✕</button>')+'</td>';
+    h+='</tr>';
+  });
+  return h+'</tbody></table></div>';
+}
+function vAdd(){
+  var e=state.editing?state.visits.find(function(v){return v.id===state.editing}):null;
+  var f=state.form||e||{date:today(),status:'Visit only'};
+  function opt(arr,val){return arr.map(function(x){return '<option'+(x===val?' selected':'')+'>'+esc(x)+'</option>'}).join('')}
+  function inp(id,label,val,extra){return '<label>'+label+'<input id="f-'+id+'" value="'+esc(val||'')+'" '+(extra||'')+'></label>'}
+  var h='<div class="panel" style="margin-top:6px"><h2>'+(e?'Edit visit':'New visit')+'</h2><form id="vform" class="form" autocomplete="off">';
+  h+='<label>Date<input type="date" id="f-date" required value="'+esc(f.date)+'"></label>';
+  h+=inp('client','Client name *',f.client,'required');
+  h+=inp('phone','Mobile number',f.phone,'inputmode="tel"');
+  h+=inp('location','Location / area',f.location,'list="dl-loc"');
+  h+=inp('reference','Reference (who referred)',f.reference,'list="dl-ref"');
+  h+='<label>Architect / designer<select id="f-architect">'+opt(ARCH,f.architect||'')+'</select></label>';
+  h+=inp('dealer','Dealer / firm',f.dealer);
+  h+=inp('salesperson','Sales person',f.salesperson,'list="dl-sp"');
+  h+='<label>Status<select id="f-status">'+opt(STATUSES,f.status||'Visit only')+'</select></label>';
+  h+='<label class="full">Products / sheets of interest<input id="f-interest" placeholder="e.g. NH-2112, NH-4601, Striped Cheva" value="'+esc(f.interest||'')+'"></label>';
+  h+='<label class="full">Remarks<textarea id="f-remarks" placeholder="Payment received, samples issued, call back date…">'+esc(f.remarks||'')+'</textarea></label>';
+  h+='<div class="full row"><button class="btn primary" type="submit">'+(e?'Save changes':'Save visit')+'</button>'+(e?'<button type="button" class="btn" data-cancel-edit>Cancel</button>':'')+'<span class="note">Status guide: Sale = order booked or payment received · Follow-up = needs a call or return visit · Sample = samples issued or returned.</span></div>';
+  return h+'</form></div>';
+}
+function bars(list,n){
+  var max=list.length?list[0][1]:1;
+  return list.slice(0,n||8).map(function(x){return '<div class="bar"><span title="'+esc(x[0])+'">'+esc(x[0])+'</span><span class="t"><i style="width:'+Math.max(3,x[1]/max*100)+'%"></i></span><b>'+x[1]+'</b></div>'}).join('')||'<div class="muted">No data.</div>';
+}
+function vInsights(){
+  var list=state.visits.slice();
+  var now=today();
+  if(state.insRange==='30')list=list.filter(function(v){return v.date>=addDays(now,-29)});
+  if(state.insRange==='90')list=list.filter(function(v){return v.date>=addDays(now,-89)});
+  var s=stats(list);
+  var h='<div class="row" style="margin-top:6px"><div class="row" role="group" aria-label="Range">'+[['30','Last 30 days'],['90','Last 90 days'],['all','All time']].map(function(p){return '<button class="btn small'+(state.insRange===p[0]?' primary':'')+'" data-ins="'+p[0]+'">'+p[1]+'</button>'}).join('')+'</div></div>';
+  var conv=s.total?Math.round(s.sale/s.total*100):0;
+  h+='<div class="kpis"><div class="kpi"><div class="n">'+s.total+'</div><div class="l">Visits</div></div><div class="kpi sale"><div class="n">'+s.sale+'</div><div class="l">Sales / payments</div></div><div class="kpi"><div class="n">'+conv+'%</div><div class="l">Visit to sale rate</div></div><div class="kpi"><div class="n">'+s.arch+'</div><div class="l">Architect / designer visits</div></div></div>';
+  var wk={};list.forEach(function(v){var k=weekStart(v.date);wk[k]=(wk[k]||0)+1});
+  var ks=Object.keys(wk).sort();
+  if(ks.length){var full=[],c=ks[0];while(c<=ks[ks.length-1]){full.push(c);c=addDays(c,7)}ks=full.slice(-16)}
+  var mx=Math.max.apply(null,ks.map(function(k){return wk[k]||0}).concat([1]));
+  h+='<div class="panel"><h2>Visits per week (week starting)</h2><div class="weeks">'+ks.map(function(k){var n=wk[k]||0;return '<div title="Week of '+fmt(k)+': '+n+'"><b>'+n+'</b><i style="height:'+(n/mx*100*0.78)+'%"></i><em>'+fmt(k).replace(' ',' ')+'</em></div>'}).join('')+'</div></div>';
+  h+='<div class="grid2" style="margin-top:14px">';
+  h+='<div class="panel"><h2>By sales person</h2>'+bars(count(list,function(v){return v.salesperson}))+'</div>';
+  h+='<div class="panel"><h2>Outcome</h2>'+bars(count(list,function(v){return v.status}))+'</div>';
+  h+='<div class="panel"><h2>Location</h2>'+bars(count(list,function(v){return v.location}),8)+'</div>';
+  h+='<div class="panel"><h2>Reference / source</h2>'+bars(count(list,function(v){return v.reference}),8)+'</div>';
+  h+='</div>';
+  return h;
+}
+function vAll(){
+  var f=state.filter,q=f.q.toLowerCase();
+  var list=state.visits.filter(function(v){
+    if(f.sp&&v.salesperson!==f.sp)return false;
+    if(f.status&&v.status!==f.status)return false;
+    if(f.month&&v.date.slice(0,7)!==f.month)return false;
+    if(q&&[v.client,v.phone,v.location,v.reference,v.remarks,v.interest,v.dealer].join(' ').toLowerCase().indexOf(q)<0)return false;
+    return true;
+  }).sort(function(a,b){return a.date<b.date?1:a.date>b.date?-1:(b.created||0)-(a.created||0)});
+  var sps=uniq('salesperson'),months=Array.from(new Set(state.visits.map(function(v){return v.date.slice(0,7)}))).sort().reverse();
+  function o(arr,val,all){return '<option value="">'+all+'</option>'+arr.map(function(x){return '<option value="'+esc(x)+'"'+(x===val?' selected':'')+'>'+esc(x)+'</option>'}).join('')}
+  var h='<div class="row" style="margin:6px 0 12px"><input id="q" type="search" placeholder="Search name, phone, remarks…" value="'+esc(f.q)+'" style="max-width:280px"><select id="fsp" style="width:auto">'+o(sps,f.sp,'All sales persons')+'</select><select id="fst" style="width:auto">'+o(STATUSES,f.status,'All statuses')+'</select><select id="fmo" style="width:auto">'+o(months,f.month,'All months')+'</select><span class="note">'+list.length+' of '+state.visits.length+'</span><span class="grow"></span><button class="btn small" data-csv>Download Excel (CSV)</button></div>';
+  h+=list.length?visitTable(list.slice(0,300),{showDate:true,actions:true}):'<div class="panel empty">No visits match.</div>';
+  if(list.length>300)h+='<div class="note" style="margin-top:8px">Showing the latest 300. Narrow the filters to see others.</div>';
+  return h;
+}
+function uniq(k){return Array.from(new Set(state.visits.map(function(v){return v[k]}).filter(Boolean))).sort()}
+
+function render(){
+  var m=document.getElementById('main');
+  if(state.login){m.innerHTML=vLogin();return}
+  if(!state.ready){m.innerHTML='<div class="panel empty">Loading visits…</div>';return}
+  var keep=document.activeElement&&document.activeElement.id;
+  m.innerHTML=state.tab==='report'?vReport():state.tab==='add'?vAdd():state.tab==='insights'?vInsights():vAll();
+  document.querySelectorAll('nav.tabs button').forEach(function(b){b.setAttribute('aria-selected',b.dataset.tab===state.tab)});
+  ['dl-loc:location','dl-ref:reference','dl-sp:salesperson'].forEach(function(x){var p=x.split(':');document.getElementById(p[0]).innerHTML=uniq(p[1]).map(function(v){return '<option value="'+esc(v)+'">'}).join('')});
+  if(keep==='q'){var q=document.getElementById('q');if(q){q.focus();q.setSelectionRange(q.value.length,q.value.length)}}
+}
+
+/* ---------- events ---------- */
+document.addEventListener('click',function(e){
+  if(e.target.closest('[data-logout-link]')){e.preventDefault();try{localStorage.removeItem('vlkey')}catch(x){}KEY='';state.login=true;render();return}
+  var t=e.target.closest('button');if(!t)return;
+  var d=t.dataset;
+  if(d.tab){state.tab=d.tab;if(d.tab!=='add'){state.editing=null;state.form=null}render();return}
+  if(d.tabGo){state.tab=d.tabGo;state.form={date:state.date,status:'Visit only'};render();return}
+  if(d.period){state.period=d.period;render();return}
+  if(d.step!==undefined){var n=+d.step;state.date=addDays(state.date,state.period==='day'?n:state.period==='week'?7*n:n*30);if(state.period==='month'){var dd=parse(state.date);dd.setDate(15);state.date=ymd(dd)}render();return}
+  if(t.hasAttribute('data-go-today')){state.date=today();render();return}
+  if(d.ins){state.insRange=d.ins;render();return}
+  if(t.hasAttribute('data-copy')){var el=document.getElementById('sharetxt');var txt=el?el.textContent:'';copy(txt,el);return}
+  if(d.edit){state.editing=d.edit;state.form=null;state.tab='add';render();window.scrollTo(0,0);return}
+  if(t.hasAttribute('data-cancel-edit')){state.editing=null;state.form=null;state.tab='report';render();return}
+  if(d.askdel){state.confirmDel=d.askdel;render();return}
+  if(t.hasAttribute('data-cancel-del')){state.confirmDel=null;render();return}
+  if(d.del){state.confirmDel=null;api('DELETE','?id='+encodeURIComponent(d.del)).then(function(){toast('Visit deleted');load()},function(){toast('Could not delete')});return}
+  if(t.hasAttribute('data-csv')){exportCsv();return}
+  if(t.hasAttribute('data-seed')){seedData();return}
+  if(t.hasAttribute('data-logout')){try{localStorage.removeItem('vlkey')}catch(x){}KEY='';state.login=true;render();return}
+});
+function copy(txt,el){
+  function fallback(){if(el){var r=document.createRange();r.selectNodeContents(el);var s=getSelection();s.removeAllRanges();s.addRange(r)}toast('Text selected. Press Ctrl+C to copy.')}
+  try{navigator.clipboard.writeText(txt).then(function(){toast('Report copied')},fallback)}catch(x){fallback()}
+}
+document.addEventListener('change',function(e){
+  var t=e.target;
+  if(t.id==='repdate'&&t.value){state.date=t.value;render()}
+  if(t.id==='fsp'){state.filter.sp=t.value;render()}
+  if(t.id==='fst'){state.filter.status=t.value;render()}
+  if(t.id==='fmo'){state.filter.month=t.value;render()}
+});
+document.addEventListener('input',function(e){if(e.target.id==='q'){state.filter.q=e.target.value;render()}});
+document.addEventListener('submit',function(e){
+  if(e.target.id!=='vform')return;
+  e.preventDefault();
+  
+  function g(id){return document.getElementById('f-'+id).value.trim()}
+  var rec={date:g('date'),client:g('client'),phone:g('phone'),location:g('location'),reference:g('reference'),architect:g('architect'),dealer:g('dealer'),salesperson:g('salesperson'),status:g('status'),interest:g('interest'),remarks:g('remarks')};
+  if(!rec.client||!rec.date)return;
+  var p;
+  if(state.editing){var old=state.visits.find(function(v){return v.id===state.editing});rec.created=old&&old.created||Date.now();p=api('PUT','?id='+encodeURIComponent(state.editing),rec)}
+  else{rec.created=Date.now();p=api('POST','',rec)}
+  p.then(function(){toast(state.editing?'Changes saved':'Visit saved');state.date=rec.date;state.editing=null;state.form=null;state.period='day';state.tab='report';return load()},function(){toast('Could not save. Check your connection and try again.')});
+});
+
+/* ---------- data ---------- */
+var KEY='';try{KEY=localStorage.getItem('vlkey')||''}catch(x){}
+function api(method,path,body){
+  return fetch('/api/visits'+(path||''),{method:method,headers:{'content-type':'application/json','x-app-key':KEY},body:body?JSON.stringify(body):undefined}).then(function(r){
+    if(r.status===401){state.login=true;state.ready=true;render();throw new Error('auth')}
+    if(!r.ok)throw new Error('http '+r.status);
+    return r.json();
+  });
+}
+function setSync(t){document.getElementById('sync').textContent=t}
+function load(){
+  return api('GET').then(function(list){
+    state.login=false;
+    state.visits=list.map(function(x){x.status=x.status||'Visit only';return x});
+    if(!state.seeded&&state.visits.length&&!state.visits.some(function(v){return v.date===state.date})){state.date=state.visits.reduce(function(m,v){return v.date>m?v.date:m},'')}
+    if(state.visits.length)state.seeded=true;state.ready=true;
+    setSync(state.visits.length+' visits saved');
+    var ae=document.activeElement;
+    if(state.tab==='add'&&ae&&/^f-/.test(ae.id||''))return;
+    render();
+  }).catch(function(e){if(e.message!=='auth'){state.ready=true;setSync('Could not reach the server. Retrying…');render()}});
+}
+function seedData(){
+  toast('Loading existing visits…');
+  fetch('/seed.json').then(function(r){return r.json()}).then(function(arr){
+    var chunks=[];for(var i=0;i<arr.length;i+=100)chunks.push(arr.slice(i,i+100));
+    return chunks.reduce(function(p,c){return p.then(function(){return api('POST','',c)})},Promise.resolve());
+  }).then(function(){toast('Existing visits loaded');return load()}).catch(function(){toast('Could not load existing visits')});
+}
+function csvCell(v){v=String(v==null?'':v);return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function exportCsv(){
+  var cols=['date','client','phone','location','reference','architect','dealer','salesperson','status','interest','remarks'];
+  var head=['Date','Client Name','Mob Number','Location','Reference','Architect','Dealer','Sales Person','Status','Products','Remarks'];
+  var rows=state.visits.slice().sort(function(a,b){return a.date<b.date?-1:1}).map(function(v){return cols.map(function(c){return csvCell(v[c])}).join(',')});
+  var blob=new Blob(['\ufeff'+head.join(',')+'\n'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='visits-'+today()+'.csv';document.body.appendChild(a);a.click();a.remove();
+}
+function vLogin(){
+  return '<div class="panel login"><h2>Sign in</h2><form id="lform" class="form" style="display:flex;flex-direction:column"><label>Team password<input id="lkey" type="password" autocomplete="current-password" required></label><button class="btn primary" type="submit">Open visit log</button>'+(KEY?'<div class="err">That password was not accepted.</div>':'')+'</form></div>';
+}
+document.addEventListener('submit',function(e){
+  if(e.target.id!=='lform')return;e.preventDefault();
+  KEY=document.getElementById('lkey').value;try{localStorage.setItem('vlkey',KEY)}catch(x){}
+  state.ready=false;render();load();
+});
+render();
+load();
+setInterval(function(){if(!document.hidden&&!state.login)load()},30000);
+})();
+</script>
+</body>
+</html>
