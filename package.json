@@ -1,7 +1,7 @@
 {
-  "name": "walk-in-visit-log",
-  "version": "1.0.0",
+  "name": "nord-home-sales-desk",
+  "version": "2.0.0",
   "private": true,
-  "description": "Walk-in client visit log with daily reports. Static page + one serverless API + Upstash Redis.",
+  "description": "Nord Home sales desk: walk-in visit log, dashboard, daily reports and quotation maker. Static pages + serverless API + Supabase.",
   "engines": { "node": ">=18" }
 }
