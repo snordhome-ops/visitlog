@@ -4,19 +4,19 @@
   --side:#262524; --side-ink:#bdb5a7; --accent:#9a7343; --accent-bright:#d6b27a; --accent-soft:#f1e8da;
   --btn:#2b2a2a; --btn-ink:#f4efe6; --field:#faf9f6; --focus:#2a78d6;
   --good:#1f7a45; --good-soft:#dcf0e3; --warn:#8f5600; --warn-soft:#fbebcf; --info:#2f5f9e; --info-soft:#dde8f7; --neutral-soft:#e9e6df; --bad:#b3261e; --bad-soft:#fbe0de;
-  --c-visit:#c9c4b8; --c-follow:#eda100; --c-sample:#2a78d6; --c-sale:#1baf7a; --c-open:#2a78d6; --c-won:#1baf7a; --c-lost:#e34948; --c-bar:#2a78d6;
+  --c-quote:#6250d6; --c-closed:#e34948; --quote-soft:#e8e4fa; --quote:#5a49c9; --c-visit:#c9c4b8; --c-follow:#eda100; --c-sample:#2a78d6; --c-sale:#1baf7a; --c-open:#2a78d6; --c-won:#1baf7a; --c-lost:#e34948; --c-bar:#2a78d6;
   --font:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#171716; --surface:#201f1e; --surface2:#292827; --ink:#ece8e1; --muted:#a29c92; --line:#34322f;
   --side:#121211; --accent:#d6b27a; --accent-soft:#2c261c; --btn:#ece3d3; --btn-ink:#1d1c1b; --field:#181817; --focus:#6aa6f0;
   --good:#6fd195; --good-soft:#173324; --warn:#e8b25a; --warn-soft:#3a2d12; --info:#8db6ee; --info-soft:#18283d; --neutral-soft:#2c2b29; --bad:#ff8a80; --bad-soft:#3d1a18;
-  --c-visit:#5a574f; --c-follow:#c98500; --c-sample:#3987e5; --c-sale:#199e70; --c-open:#3987e5; --c-won:#199e70; --c-lost:#e66767; --c-bar:#3987e5; color-scheme:dark}}
+  --c-quote:#9085e9; --c-closed:#e66767; --quote-soft:#26213f; --quote:#a99ff0; --c-visit:#5a574f; --c-follow:#c98500; --c-sample:#3987e5; --c-sale:#199e70; --c-open:#3987e5; --c-won:#199e70; --c-lost:#e66767; --c-bar:#3987e5; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#171716; --surface:#201f1e; --surface2:#292827; --ink:#ece8e1; --muted:#a29c92; --line:#34322f;
   --side:#121211; --accent:#d6b27a; --accent-soft:#2c261c; --btn:#ece3d3; --btn-ink:#1d1c1b; --field:#181817; --focus:#6aa6f0;
   --good:#6fd195; --good-soft:#173324; --warn:#e8b25a; --warn-soft:#3a2d12; --info:#8db6ee; --info-soft:#18283d; --neutral-soft:#2c2b29; --bad:#ff8a80; --bad-soft:#3d1a18;
-  --c-visit:#5a574f; --c-follow:#c98500; --c-sample:#3987e5; --c-sale:#199e70; --c-open:#3987e5; --c-won:#199e70; --c-lost:#e66767; --c-bar:#3987e5; color-scheme:dark}
+  --c-quote:#9085e9; --c-closed:#e66767; --quote-soft:#26213f; --quote:#a99ff0; --c-visit:#5a574f; --c-follow:#c98500; --c-sample:#3987e5; --c-sale:#199e70; --c-open:#3987e5; --c-won:#199e70; --c-lost:#e66767; --c-bar:#3987e5; color-scheme:dark}
 *{box-sizing:border-box}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
@@ -161,7 +161,12 @@ td.rem{min-width:220px;max-width:380px}
 .p-Sale,.p-Won{background:var(--good-soft);color:var(--good)}
 .p-Follow-up{background:var(--warn-soft);color:var(--warn)}
 .p-Sample,.p-Open{background:var(--info-soft);color:var(--info)}
-.p-Visit-only{background:var(--neutral-soft);color:var(--muted)}
+.p-Visit-only,.g-visit{background:var(--neutral-soft);color:var(--muted)}
+.g-followup{background:var(--warn-soft);color:var(--warn)}
+.g-sample{background:var(--info-soft);color:var(--info)}
+.g-quote{background:var(--quote-soft);color:var(--quote)}
+.g-sale{background:var(--good-soft);color:var(--good)}
+.g-closed{background:var(--bad-soft);color:var(--bad)}
 .p-Lost{background:var(--bad-soft);color:var(--bad)}
 .cb{display:flex;align-items:center;gap:8px}
 .cb i{display:block;height:8px;border-radius:4px;background:var(--c-sale);min-width:2px}
@@ -234,3 +239,13 @@ pre.share{white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,Me
   .sheet{max-width:none;min-width:0;width:auto!important;zoom:1!important}
   .s-tbl tr,.s-foot{break-inside:avoid}
 }
+
+/* ---------- theme switch ---------- */
+.themeseg button{padding:5px 11px;font-size:12px}
+.login .formside{position:relative}
+.themeseg.top{position:absolute;top:18px;right:max(18px,env(safe-area-inset-right,0px))}
+.side .themeseg{display:flex;width:100%;margin-bottom:12px;background:rgba(255,255,255,.08)}
+.side .themeseg button{flex:1;color:var(--side-ink)}
+.side .themeseg button.on{background:rgba(255,255,255,.18);color:#fff;box-shadow:none}
+.mobtop .tbtns{display:flex;gap:8px}
+@media(max-width:820px){.themeseg.top{top:10px}}

@@ -2,13 +2,12 @@
 const { sb, guard, listAll, rid } = require('./_lib');
 
 const FIELDS = ['date', 'client', 'phone', 'location', 'reference', 'architect', 'dealer', 'salesperson', 'status', 'interest', 'remarks'];
-const STATUSES = ['Visit only', 'Follow-up', 'Sample', 'Sale'];
 
 function clean(b) {
   const o = {};
   for (const f of FIELDS) o[f] = String((b && b[f]) != null ? b[f] : '').trim().slice(0, 2000);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(o.date) || !o.client) return null;
-  if (!STATUSES.includes(o.status)) o.status = 'Visit only';
+  o.status = o.status.slice(0, 60) || 'Visit only'; // the list of statuses lives in public/statuses.js
   o.created = Number(b.created) > 0 ? Math.floor(Number(b.created)) : Date.now();
   return o;
 }

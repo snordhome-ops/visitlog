@@ -3,7 +3,7 @@
   'use strict';
   var NH = window.NH = window.NH || {};
   var $ = function (id) { return document.getElementById(id); };
-  var STATUSES = ['Visit only', 'Follow-up', 'Sample', 'Sale'];
+  var STATUSES = NHS.names;
   var ARCH = ['', 'Yes', 'No', 'Designer', 'Carpenter'];
   var state = NH.state = { visits: [], quotes: [], loaded: false, view: 'dashboard', range: 30, period: 'day', date: today(), filter: { q: '', sp: '', status: '', month: '' }, editing: null, confirmDel: null };
 
@@ -23,7 +23,13 @@
   function toast(m) { var t = $('toast'); t.textContent = m; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(function () { t.hidden = true; }, 2600); }
   function spKey(s) { var w = String(s || '').toLowerCase().replace(/[.,]/g, ' ').split(/\s+/).filter(function (x) { return x && !/^(mr|mrs|ms|miss|dr|sb|sir|sahib|engr|ar)$/.test(x); }); return w[0] || ''; }
   function spName(k) { return k ? k.charAt(0).toUpperCase() + k.slice(1) : 'Not noted'; }
-  function pill(s) { return '<span class="pill p-' + esc(String(s || 'Visit only').replace(' ', '-')) + '">' + esc(s || 'Visit only') + '</span>'; }
+  function pill(s) { s = s || 'Visit only'; return '<span class="pill g-' + NHS.group(s) + '">' + esc(s) + '</span>'; }
+  function statusOptions(val, all) {
+    return (all ? '<option value="">' + all + '</option>' : '') + NHS.GROUPS.map(function (g) {
+      var items = NHS.LIST.filter(function (x) { return x.g === g.id; });
+      return '<optgroup label="' + esc(g.label) + '">' + items.map(function (x) { return '<option' + (x.n === val ? ' selected' : '') + '>' + esc(x.n) + '</option>'; }).join('') + '</optgroup>';
+    }).join('') + (val && NHS.names.indexOf(val) < 0 ? '<option selected>' + esc(val) + '</option>' : '');
+  }
   function count(list, fn) { var m = {}; list.forEach(function (v) { var k = fn(v); if (!k) return; m[k] = (m[k] || 0) + 1; }); return Object.keys(m).map(function (k) { return [k, m[k]]; }).sort(function (a, b) { return b[1] - a[1]; }); }
   var ICONS = {
     dashboard: '<path d="M4 13h6V4H4zM14 20h6V11h-6zM4 20h6v-3H4zM14 8h6V4h-6z"/>',
@@ -35,6 +41,23 @@
   var VIEWS = [['dashboard', 'Dashboard'], ['report', 'Daily report'], ['visits', 'Visits'], ['quotes', 'Quotations']];
   Object.assign(NH, { esc: esc, fmt: fmt, today: today, addDays: addDays, toast: toast, parse: parse, ymd: ymd });
   NH.canEdit = function () { return !SESS || SESS.role !== 'viewer'; };
+
+
+  /* ---------- theme (light by default, remembered) ---------- */
+  function themePref() { try { return localStorage.getItem('nh_theme') || 'light'; } catch (e) { return 'light'; } }
+  function applyTheme(t) {
+    var el = document.documentElement;
+    if (t === 'dark' || t === 'light') el.setAttribute('data-theme', t); else el.removeAttribute('data-theme');
+    try { localStorage.setItem('nh_theme', t); } catch (e) { }
+    document.querySelectorAll('[data-theme-set]').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-theme-set') === t); });
+    var c = $('themeCycle'); if (c) c.textContent = { light: 'Light', dark: 'Dark', auto: 'Auto' }[t];
+    if (state.loaded && state.view === 'dashboard') drawCharts();
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-theme-set]'); if (b) { applyTheme(b.getAttribute('data-theme-set')); return; }
+    if (e.target.closest('#themeCycle')) applyTheme({ light: 'dark', dark: 'auto', auto: 'light' }[themePref()] || 'light');
+  });
+  applyTheme(themePref());
 
   /* ---------- session + api ---------- */
   var SESS = null;
@@ -159,7 +182,7 @@
     var rb = rangeBounds(), a = rb[0], b = rb[1], span = diffDays(a, b) + 1;
     var pa = addDays(a, -span), pb = addDays(a, -1), lab = state.range === 'all' ? '' : state.range + ' days';
     var V = inR(state.visits, a, b), Q = inR(state.quotes, a, b), PV = inR(state.visits, pa, pb), PQ = inR(state.quotes, pa, pb);
-    var sale = V.filter(function (v) { return v.status === 'Sale'; }).length, psale = PV.filter(function (v) { return v.status === 'Sale'; }).length;
+    var sale = V.filter(function (v) { return NHS.isSale(v.status); }).length, psale = PV.filter(function (v) { return NHS.isSale(v.status); }).length;
     var qv = Q.reduce(function (s, q) { return s + q.total; }, 0), pqv = PQ.reduce(function (s, q) { return s + q.total; }, 0);
     var won = Q.filter(function (q) { return q.status === 'Won'; }).reduce(function (s, q) { return s + q.total; }, 0);
     var conv = V.length ? Math.round(sale / V.length * 100) : 0;
@@ -172,7 +195,7 @@
       kpi('Quotations issued', Q.length, delta(Q.length, PQ.length, lab)) +
       kpi('Quoted value', '<small>PKR</small>' + NHC.short(qv), delta(qv, pqv, lab), 'key', 'PKR ' + fmt(qv)) +
       kpi('Won value', '<small>PKR</small>' + NHC.short(won), Q.length ? (function (n) { return n + ' won quotation' + (n === 1 ? '' : 's'); })(Q.filter(function (q) { return q.status === 'Won'; }).length) : '', '', 'PKR ' + fmt(won)) + '</div>';
-    h += '<div class="grid g21"><div class="card"><h2>Visits over time</h2><div class="legend">' + [['Visit only', 'var(--c-visit)'], ['Follow-up', 'var(--c-follow)'], ['Sample', 'var(--c-sample)'], ['Sale', 'var(--c-sale)']].map(function (s) { return '<span><i style="background:' + s[1] + '"></i>' + s[0] + '</span>'; }).join('') + '</div><div class="chart" id="ch-visits"></div></div>' +
+    h += '<div class="grid g21"><div class="card"><h2>Visits over time</h2><div class="legend">' + NHS.GROUPS.map(function (g) { return '<span><i style="background:' + g.color + '"></i>' + g.label + '</span>'; }).join('') + '</div><div class="chart" id="ch-visits"></div></div>' +
       '<div class="card"><h2>Visit outcomes</h2><div class="donutwrap"><div class="chart" id="ch-donut"></div><div class="dl" id="dl-donut"></div></div></div></div>';
     h += '<div class="grid g21"><div class="card"><h2>Quoted value over time <small>PKR</small></h2><div class="legend">' + [['Open', 'var(--c-open)'], ['Won', 'var(--c-won)'], ['Lost', 'var(--c-lost)']].map(function (s) { return '<span><i style="background:' + s[1] + '"></i>' + s[0] + '</span>'; }).join('') + '</div><div class="chart" id="ch-quotes"></div></div>' +
       '<div class="card"><h2>Follow-ups waiting</h2>' + followList(V) + '</div></div>';
@@ -182,7 +205,7 @@
     drawCharts();
   }
   function followList(V) {
-    var f = V.filter(function (v) { return v.status === 'Follow-up' || v.status === 'Sample'; }).sort(function (x, y) { return x.date < y.date ? 1 : -1; }).slice(0, 5);
+    var f = V.filter(function (v) { return NHS.needsAction(v.status); }).sort(function (x, y) { return x.date < y.date ? 1 : -1; }).slice(0, 5);
     if (!f.length) return '<div class="empty">Nothing waiting in this period.</div>';
     return '<ul class="fu">' + f.map(function (v) { return '<li>' + pill(v.status) + '<div><b>' + esc(v.client) + '</b><div class="meta">' + dShort(v.date) + (v.salesperson ? ' · ' + esc(v.salesperson) : '') + '</div><div>' + esc(v.remarks || v.interest || '') + '</div></div></li>'; }).join('') + '</ul>';
   }
@@ -199,7 +222,7 @@
   function teamTable(V, Q) {
     var m = {};
     function g(k) { return m[k] || (m[k] = { v: 0, s: 0, q: 0, qv: 0, won: 0 }); }
-    V.forEach(function (v) { var r = g(spKey(v.salesperson)); r.v++; if (v.status === 'Sale') r.s++; });
+    V.forEach(function (v) { var r = g(spKey(v.salesperson)); r.v++; if (NHS.isSale(v.status)) r.s++; });
     Q.forEach(function (q) { var r = g(spKey(q.sales)); r.q++; r.qv += q.total; if (q.status === 'Won') r.won += q.total; });
     var rows = Object.keys(m).map(function (k) { return [k, m[k]]; }).sort(function (a, b) { return (b[1].v + b[1].q) - (a[1].v + a[1].q); });
     if (!rows.length) return '<div class="empty">No data in this period.</div>';
@@ -219,10 +242,10 @@
   }
   function drawCharts() {
     var rb = rangeBounds(), a = rb[0], b = rb[1], V = inR(state.visits, a, b), Q = inR(state.quotes, a, b), bk = buckets(a, b);
-    var vs = [['Visit only', 'var(--c-visit)'], ['Follow-up', 'var(--c-follow)'], ['Sample', 'var(--c-sample)'], ['Sale', 'var(--c-sale)']];
+    var vs = NHS.GROUPS.map(function (g) { return [g.label, g.color]; });
     var idx = {}; bk.keys.forEach(function (k, i) { idx[k] = i; });
     var ser = vs.map(function (s) { return { name: s[0], color: s[1], values: bk.keys.map(function () { return 0; }) }; });
-    V.forEach(function (v) { var i = idx[bk.key(v.date)], k = STATUSES.indexOf(v.status); if (i != null && k >= 0) ser[k].values[i]++; });
+    V.forEach(function (v) { var i = idx[bk.key(v.date)], k = NHS.GROUPS.map(function (g) { return g.id; }).indexOf(NHS.group(v.status)); if (i != null && k >= 0) ser[k].values[i]++; });
     var e1 = $('ch-visits'); if (e1) NHC.stacked(e1, { labels: bk.labels, series: ser, tipTitle: bk.tip, label: 'Visits over time by outcome', fmt: function (v) { return String(v); } });
     var qs = [['Open', 'var(--c-open)'], ['Won', 'var(--c-won)'], ['Lost', 'var(--c-lost)']].map(function (s) { return { name: s[0], color: s[1], values: bk.keys.map(function () { return 0; }) }; });
     Q.forEach(function (q) { var i = idx[bk.key(q.date)], k = ['Open', 'Won', 'Lost'].indexOf(q.status); if (i != null && k >= 0) qs[k].values[i] += q.total; });
@@ -245,12 +268,13 @@
     if (state.period === 'week') return dShort(a) + ' – ' + dShort(b) + ' ' + parse(b).getFullYear();
     return parse(a).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
   }
-  function stats(list) { var c = function (s) { return list.filter(function (v) { return v.status === s; }).length; }; return { total: list.length, sale: c('Sale'), fu: c('Follow-up'), sample: c('Sample'), arch: list.filter(function (v) { return v.architect && v.architect !== 'No'; }).length }; }
+  function stats(list) { var c = function (g) { return list.filter(function (v) { return NHS.group(v.status) === g; }).length; }; return { total: list.length, sale: c('sale'), fu: c('followup'), sample: c('sample'), quote: c('quote'), closed: c('closed'), arch: list.filter(function (v) { return v.architect && v.architect !== 'No'; }).length }; }
   function reportText(list, Q, a, b) {
     var s = stats(list), L = [], qv = Q.reduce(function (t, q) { return t + q.total; }, 0);
     L.push('*Nord Home – Daily Report – ' + periodLabel(a, b) + '*', '');
-    L.push('Walk-in visits: ' + s.total + '  |  Sales: ' + s.sale + '  |  Follow-ups: ' + s.fu + '  |  Samples: ' + s.sample);
+    L.push('Walk-in visits: ' + s.total + '  |  Sales: ' + s.sale + '  |  Follow-ups: ' + s.fu + '  |  Samples: ' + s.sample + (s.quote ? '  |  Quotations given: ' + s.quote : ''));
     L.push('With architect / designer: ' + s.arch);
+    var bs = count(list, function (v) { return v.status; }); if (bs.length) L.push('By status: ' + bs.map(function (x) { return x[0] + ' ' + x[1]; }).join(', '));
     L.push('Quotations issued: ' + Q.length + (Q.length ? '  |  Value: PKR ' + fmt(qv) : ''));
     var sp = count(list, function (v) { return spName(spKey(v.salesperson)); });
     if (sp.length) L.push('By salesperson: ' + sp.map(function (x) { return x[0] + ' ' + x[1]; }).join(', '));
@@ -261,7 +285,7 @@
       L.push(line); var d = [v.interest, v.remarks].filter(Boolean).join(' | '); if (d) L.push('   ' + d);
     });
     if (Q.length) { L.push('', '*Quotations*'); Q.forEach(function (q) { L.push('• #' + q.no + ' ' + (q.client || '-') + ' – PKR ' + fmt(q.total) + ' – ' + q.status + (q.sales ? ' (' + q.sales + ')' : '')); }); }
-    var f = list.filter(function (v) { return v.status === 'Follow-up' || v.status === 'Sample'; });
+    var f = list.filter(function (v) { return NHS.needsAction(v.status); });
     if (f.length) { L.push('', '*Follow-ups needed*'); f.forEach(function (v) { L.push('• ' + v.client + ' – ' + (v.remarks || v.interest || v.status) + (v.salesperson ? ' (' + v.salesperson + ')' : '')); }); }
     return L.join('\n');
   }
@@ -275,7 +299,7 @@
       h += '<div class="card empty">No visits recorded for this ' + state.period + '.' + (NH.canEdit() ? '<br><button class="btn primary" style="margin-top:12px" data-newvisit>Add a visit</button>' : '') + '</div>';
     } else {
       if (list.length) h += visitTable(list, { dates: state.period !== 'day', actions: true });
-      var f = list.filter(function (v) { return v.status === 'Follow-up' || v.status === 'Sample'; });
+      var f = list.filter(function (v) { return NHS.needsAction(v.status); });
       h += '<div class="grid g21" style="margin-top:14px"><div class="card"><h2>Message to management</h2><pre class="share" id="sharetxt">' + esc(reportText(list, Q, r[0], r[1])) + '</pre><div class="note" style="margin-top:8px">Formatted for WhatsApp or email. Copy it, then paste.</div></div><div class="card"><h2>Follow-ups needed</h2>' + (f.length ? '<ul class="fu">' + f.map(function (v) { return '<li>' + pill(v.status) + '<div><b>' + esc(v.client) + '</b>' + (v.salesperson ? ' <span class="meta">· ' + esc(v.salesperson) + '</span>' : '') + '<div>' + esc(v.remarks || v.interest || '') + '</div></div></li>'; }).join('') + '</ul>' : '<div class="empty">Nothing pending.</div>') + '</div></div>';
     }
     $('v-report').innerHTML = h;
@@ -307,7 +331,7 @@
     if (!state.visits.length) {
       return void ($('v-visits').innerHTML = h + '<div class="card empty"><b>No visits saved yet.</b><br>' + (NH.canEdit() ? 'Load the 176 visits from your Excel sheet, or add your first visit.<div class="row" style="justify-content:center;margin-top:14px"><button class="btn primary" data-seed>Load existing visits</button><button class="btn" data-newvisit>Add a visit</button></div>' : 'Ask an editor to add visits.') + '</div>');
     }
-    h += '<div class="row" style="margin-bottom:12px"><input class="inp" id="q" type="search" placeholder="Search name, phone, remarks…" value="' + esc(f.q) + '" style="min-width:220px;flex:1;max-width:320px"><select class="sel" id="fsp">' + o(sps, f.sp, 'All sales persons', spName) + '</select><select class="sel" id="fst">' + o(STATUSES, f.status, 'All statuses') + '</select><select class="sel" id="fmo">' + o(months, f.month, 'All months', function (m) { return parse(m + '-01').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); }) + '</select><span class="note">' + list.length + ' of ' + state.visits.length + '</span></div>';
+    h += '<div class="row" style="margin-bottom:12px"><input class="inp" id="q" type="search" placeholder="Search name, phone, remarks…" value="' + esc(f.q) + '" style="min-width:220px;flex:1;max-width:320px"><select class="sel" id="fsp">' + o(sps, f.sp, 'All sales persons', spName) + '</select><select class="sel" id="fst">' + statusOptions(f.status, 'All statuses') + '</select><select class="sel" id="fmo">' + o(months, f.month, 'All months', function (m) { return parse(m + '-01').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }); }) + '</select><span class="note">' + list.length + ' of ' + state.visits.length + '</span></div>';
     h += list.length ? visitTable(list.slice(0, 300), { dates: true, actions: true }) : '<div class="card empty">No visits match.</div>';
     if (list.length > 300) h += '<div class="note" style="margin-top:8px">Showing the latest 300. Narrow the filters to see others.</div>';
     $('v-visits').innerHTML = h;
@@ -323,7 +347,7 @@
     $('vdlg').innerHTML = '<div class="dh"><h2 id="vdlgT">' + (e ? 'Edit visit' : 'New visit') + '</h2><button type="button" data-closedlg aria-label="Close">×</button></div><div class="db"><form id="vform" autocomplete="off"><div class="form">' +
       '<label class="field">Date<input type="date" id="f-date" required value="' + esc(f.date) + '"></label>' + inp('client', 'Client name *', f.client, 'required') + inp('phone', 'Mobile number', f.phone, 'inputmode="tel"') + inp('location', 'Location / area', f.location, 'list="dl-loc"') + inp('reference', 'Reference (who referred)', f.reference, 'list="dl-ref"') +
       '<label class="field">Architect / designer<select id="f-architect">' + sel(ARCH, f.architect || '') + '</select></label>' + inp('dealer', 'Dealer / firm', f.dealer) + inp('salesperson', 'Sales person', f.salesperson, 'list="dl-sp"') +
-      '<label class="field">Status<select id="f-status">' + sel(STATUSES, f.status || 'Visit only') + '</select></label>' +
+      '<label class="field">Status<select id="f-status">' + statusOptions(f.status || 'Visit only') + '</select></label>' +
       '<label class="field full">Products / sheets of interest<input id="f-interest" placeholder="e.g. NH-2112, NH-4601, Striped Cheva" value="' + esc(f.interest || '') + '"></label>' +
       '<label class="field full">Remarks<textarea id="f-remarks" placeholder="Payment received, samples issued, call back date…">' + esc(f.remarks || '') + '</textarea></label></div>' +
       dl('dl-loc', 'location') + dl('dl-ref', 'reference') + dl('dl-sp', 'salesperson') +

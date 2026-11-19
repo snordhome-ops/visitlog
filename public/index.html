@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Nord Home Sales Desk</title>
 <link rel="icon" href="/logo.png">
+<script>try{var t=localStorage.getItem("nh_theme");document.documentElement.setAttribute("data-theme",t==="dark"?"dark":t==="auto"?"":"light");if(t==="auto")document.documentElement.removeAttribute("data-theme")}catch(e){document.documentElement.setAttribute("data-theme","light")}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
@@ -22,6 +23,7 @@
     <span class="note" style="color:#8f887b">Lahore · Islamabad · Karachi</span>
   </div>
   <div class="formside">
+    <div class="seg themeseg top" role="group" aria-label="Theme"><button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button><button type="button" data-theme-set="auto">Auto</button></div>
     <form id="lform" autocomplete="on">
       <div><h1>Sign in</h1><p class="small" style="margin-top:6px">Use the email and password your administrator gave you.</p></div>
       <div id="lmsg" class="msg" hidden role="alert"></div>
@@ -37,10 +39,10 @@
   <aside class="side">
     <img class="logo" src="/logo.png" alt="Nord Home">
     <nav id="nav" aria-label="Main"></nav>
-    <div class="who"><b id="whoEmail"></b><span id="whoRole"></span><button id="logout">Sign out</button></div>
+    <div class="who"><div class="seg themeseg side-seg" role="group" aria-label="Theme"><button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button><button type="button" data-theme-set="auto">Auto</button></div><b id="whoEmail"></b><span id="whoRole"></span><button id="logout">Sign out</button></div>
   </aside>
   <div>
-    <div class="mobtop"><img src="/logo.png" alt="Nord Home"><button id="logout2">Sign out</button></div>
+    <div class="mobtop"><img src="/logo.png" alt="Nord Home"><span class="tbtns"><button id="themeCycle" aria-label="Change theme">Light</button><button id="logout2">Sign out</button></span></div>
     <main class="main">
       <section class="view" id="v-dashboard" hidden></section>
       <section class="view" id="v-report" hidden></section>
@@ -54,6 +56,7 @@
 <dialog id="vdlg" aria-labelledby="vdlgT"></dialog>
 <div id="toast" class="toast" hidden role="status"></div>
 
+<script src="/statuses.js"></script>
 <script src="/charts.js"></script>
 <script src="/quote.js"></script>
 <script src="/app.js"></script>
